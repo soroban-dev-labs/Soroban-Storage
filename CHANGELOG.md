@@ -6,6 +6,12 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `assert_ttl!(env, contract_id, key, expected)` test macro (behind
+  `testutils`): checks a key's TTL without wrapping it in `env.as_contract`,
+  and reports the key, expected and actual TTL on failure.
+
 ## [0.1.0] - 2026-11-02
 
 ### Added
