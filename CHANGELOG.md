@@ -6,6 +6,11 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Tests for `#[contracttype]` struct and enum, `Vec` and `Map` values:
+  set, get, update and the `WrongType` (1101) error path.
+
 ## [0.1.0] - 2026-11-02
 
 ### Added
