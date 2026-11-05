@@ -313,6 +313,62 @@ pub fn ttl<K: TypedKey + ?Sized>(env: &Env, key: &K) -> u32 {
     K::Kind::get_ttl(env, &key.to_key_val(env))
 }
 
+/// Asserts that the entry under a key has the expected remaining TTL, in
+/// ledgers.
+///
+/// Runs [`ttl`] inside `env.as_contract(contract_id, ..)`, so it can be
+/// called directly from a test. On failure it panics with the key (via
+/// `Debug`), the expected TTL and the actual TTL.
+///
+/// `env` may be an `Env` or `&Env`, and `contract_id` an `Address` or
+/// `&Address`. Test-only: requires the `testutils` feature.
+///
+/// ```
+/// use soroban_sdk::{contract, testutils::Address as _, Address, Env};
+/// use soroban_storage::{assert_ttl, days, storage_keys, KeyExt, TtlPolicy};
+///
+/// const BALANCE_TTL: TtlPolicy = TtlPolicy::new(days(30), days(90));
+///
+/// storage_keys! {
+///     pub persistent(BALANCE_TTL) Balance(owner: Address) => i128;
+/// }
+///
+/// #[contract]
+/// pub struct Token;
+///
+/// let env = Env::default();
+/// let id = env.register(Token, ());
+/// let addr = Address::generate(&env);
+/// env.as_contract(&id, || Balance(addr.clone()).set(&env, &100));
+///
+/// assert_ttl!(env, id, Balance(addr), BALANCE_TTL.extend_to);
+/// ```
+///
+/// A mismatch panics with a message like:
+///
+/// ```text
+/// TTL mismatch for key `Balance(..)`: expected 1555200 ledgers, got 1555199
+/// ```
+#[cfg(any(test, feature = "testutils"))]
+#[macro_export]
+macro_rules! assert_ttl {
+    ($env:expr, $contract_id:expr, $key:expr, $expected:expr $(,)?) => {{
+        let env: &::soroban_sdk::Env = &$env;
+        let contract_id: &::soroban_sdk::Address = &$contract_id;
+        let key = $key;
+        let expected: u32 = $expected;
+        let actual: u32 = env.as_contract(contract_id, || $crate::ttl(env, &key));
+        if actual != expected {
+            ::core::panic!(
+                "TTL mismatch for key `{:?}`: expected {} ledgers, got {}",
+                key,
+                expected,
+                actual,
+            );
+        }
+    }};
+}
+
 // ---------------------------------------------------------------------------
 // Method-call syntax
 // ---------------------------------------------------------------------------
