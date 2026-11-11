@@ -8,8 +8,9 @@ uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Tests for `#[contracttype]` struct and enum, `Vec` and `Map` values:
-  set, get, update and the `WrongType` (1101) error path.
+- `assert_ttl!(env, contract_id, key, expected)` test macro (behind
+  `testutils`): checks a key's TTL without wrapping it in `env.as_contract`,
+  and reports the key, expected and actual TTL on failure.
 
 ## [0.1.0] - 2026-11-02
 

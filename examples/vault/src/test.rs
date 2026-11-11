@@ -2,7 +2,7 @@ extern crate std;
 
 use super::*;
 use soroban_sdk::testutils::{Address as _, Ledger};
-use soroban_storage::KeyExt;
+use soroban_storage::{assert_ttl, KeyExt};
 
 fn setup() -> (Env, Address, VaultClient<'static>) {
     let env = Env::default();
@@ -35,10 +35,8 @@ fn balance_ttl_follows_policy() {
     let (env, id, client) = setup();
     let user = Address::generate(&env);
     client.deposit(&user, &100);
-    env.as_contract(&id, || {
-        assert_eq!(Balance(user.clone()).ttl(&env), BALANCE_TTL.extend_to);
-        assert_eq!(Admin.ttl(&env), INSTANCE_TTL.extend_to);
-    });
+    assert_ttl!(env, id, Balance(user.clone()), BALANCE_TTL.extend_to);
+    assert_ttl!(env, id, Admin, INSTANCE_TTL.extend_to);
 
     // Once the balance drops below its threshold, a read extends it again.
     advance(&env, BALANCE_TTL.extend_to - BALANCE_TTL.threshold + 1);
@@ -46,9 +44,7 @@ fn balance_ttl_follows_policy() {
         assert!(Balance(user.clone()).ttl(&env) < BALANCE_TTL.threshold);
     });
     assert_eq!(client.balance(&user), 100);
-    env.as_contract(&id, || {
-        assert_eq!(Balance(user.clone()).ttl(&env), BALANCE_TTL.extend_to);
-    });
+    assert_ttl!(env, id, Balance(user), BALANCE_TTL.extend_to);
 }
 
 #[test]

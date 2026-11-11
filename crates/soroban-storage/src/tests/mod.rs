@@ -297,3 +297,21 @@ fn lifecycle_is_exposed() {
     assert_eq!(Balance(owner.clone()).lifecycle(), Lifecycle::Persistent);
     assert_eq!(Nonce(owner, 0).lifecycle(), Lifecycle::Temporary);
 }
+
+#[test]
+fn assert_ttl_passes_on_match() {
+    let (env, id) = setup();
+    let owner = Address::generate(&env);
+    env.as_contract(&id, || Balance(owner.clone()).set(&env, &100));
+    assert_ttl!(env, id, Balance(owner.clone()), BALANCE_TTL.extend_to);
+    // References work too.
+    assert_ttl!(&env, &id, Balance(owner), BALANCE_TTL.extend_to,);
+}
+
+#[test]
+#[should_panic(expected = "TTL mismatch for key `Lazy(1)`: expected 4999 ledgers, got 5000")]
+fn assert_ttl_reports_key_expected_and_actual() {
+    let (env, id) = setup();
+    env.as_contract(&id, || Lazy(1).set(&env, &7));
+    assert_ttl!(env, id, Lazy(1), LAZY_TTL.extend_to - 1);
+}
