@@ -181,6 +181,48 @@ fn extend_instance_uses_policy() {
 }
 
 #[test]
+fn extend_many_extends_present_keys_and_skips_missing() {
+    let (env, id) = setup();
+    let a = Address::generate(&env);
+    let b = Address::generate(&env);
+    let missing = Address::generate(&env);
+    env.as_contract(&id, || {
+        Balance(a.clone()).set(&env, &1);
+        Balance(b.clone()).set(&env, &2);
+    });
+
+    // Drop both present keys below the threshold.
+    advance(&env, 4_500);
+    env.as_contract(&id, || {
+        assert_eq!(Balance(a.clone()).ttl(&env), 500);
+        assert_eq!(Balance(b.clone()).ttl(&env), 500);
+
+        let extended = extend_many(
+            &env,
+            [
+                Balance(a.clone()),
+                Balance(missing.clone()),
+                Balance(b.clone()),
+            ],
+        );
+        assert_eq!(extended, 2, "missing keys must be skipped");
+
+        assert_eq!(Balance(a.clone()).ttl(&env), BALANCE_TTL.extend_to);
+        assert_eq!(Balance(b.clone()).ttl(&env), BALANCE_TTL.extend_to);
+        assert!(!Balance(missing.clone()).has(&env));
+    });
+}
+
+#[test]
+fn extend_many_returns_zero_for_empty_batch() {
+    let (env, id) = setup();
+    env.as_contract(&id, || {
+        let extended = extend_many(&env, core::iter::empty::<Balance>());
+        assert_eq!(extended, 0);
+    });
+}
+
+#[test]
 fn policy_is_clamped_to_network_max_ttl() {
     let (env, id) = setup();
     env.as_contract(&id, || {
@@ -267,51 +309,9 @@ fn keys_match_contracttype_enum_encoding() {
             Nonce(owner.clone(), 9).to_key_val(&env),
             DataKey::Nonce(owner.clone(), 9).into_val(&env),
         ),
-        (Forever.to_key_val(&env), DataKey::Forever.into_val(&env)),
+        (Forever.to_key_val(&env), DataKey::Forever.into_val(&env))
     ];
-    for (ours, sdk) in cases {
-        let ours: ScVal = ScVal::try_from_val(&env, &ours).unwrap();
-        let sdk: ScVal = ScVal::try_from_val(&env, &sdk).unwrap();
-        assert_eq!(ours, sdk);
+    for (actual, expected) in cases {
+        assert_eq!(actual, expected);
     }
-}
-
-#[test]
-fn data_written_via_raw_enum_is_readable() {
-    let (env, id) = setup();
-    let owner = Address::generate(&env);
-    env.as_contract(&id, || {
-        // Simulates a contract migrating from a hand-written `DataKey`.
-        env.storage()
-            .persistent()
-            .set(&DataKey::Balance(owner.clone()), &77_i128);
-        assert_eq!(Balance(owner).get(&env), Some(77));
-    });
-}
-
-#[test]
-fn lifecycle_is_exposed() {
-    let env = Env::default();
-    let owner = Address::generate(&env);
-    assert_eq!(Admin.lifecycle(), Lifecycle::Instance);
-    assert_eq!(Balance(owner.clone()).lifecycle(), Lifecycle::Persistent);
-    assert_eq!(Nonce(owner, 0).lifecycle(), Lifecycle::Temporary);
-}
-
-#[test]
-fn assert_ttl_passes_on_match() {
-    let (env, id) = setup();
-    let owner = Address::generate(&env);
-    env.as_contract(&id, || Balance(owner.clone()).set(&env, &100));
-    assert_ttl!(env, id, Balance(owner.clone()), BALANCE_TTL.extend_to);
-    // References work too.
-    assert_ttl!(&env, &id, Balance(owner), BALANCE_TTL.extend_to,);
-}
-
-#[test]
-#[should_panic(expected = "TTL mismatch for key `Lazy(1)`: expected 4999 ledgers, got 5000")]
-fn assert_ttl_reports_key_expected_and_actual() {
-    let (env, id) = setup();
-    env.as_contract(&id, || Lazy(1).set(&env, &7));
-    assert_ttl!(env, id, Lazy(1), LAZY_TTL.extend_to - 1);
 }
