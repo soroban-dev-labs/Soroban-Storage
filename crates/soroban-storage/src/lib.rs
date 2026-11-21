@@ -504,7 +504,8 @@ macro_rules! storage_keys {
             #[derive(Clone, Debug, Eq, PartialEq)]
             $vis struct $Key $( ( $( pub $fty ),* ) )?;
 
-            // Reject invalid policies at compile time.
+            // Reject unknown kinds and invalid policies at compile time.
+            $crate::__storage_kind!(@check $kind);
             const _: $crate::TtlPolicy = $crate::TtlPolicy::validated($ttl);
 
             impl $crate::TypedKey for $Key {
@@ -530,6 +531,19 @@ macro_rules! storage_keys {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __storage_kind {
+    // Item position: reports an unknown kind, expands to nothing otherwise.
+    (@check persistent) => {};
+    (@check temporary) => {};
+    (@check instance) => {};
+    (@check $other:ident) => {
+        ::core::compile_error!(::core::concat!(
+            "unknown storage kind `",
+            ::core::stringify!($other),
+            "`: expected `persistent`, `temporary` or `instance`"
+        ));
+    };
+    // Type position. An unknown kind has already been reported by `@check`,
+    // so fall back to a valid type to avoid a second, confusing error.
     (persistent) => {
         $crate::Persistent
     };
@@ -540,10 +554,6 @@ macro_rules! __storage_kind {
         $crate::Instance
     };
     ($other:ident) => {
-        ::core::compile_error!(::core::concat!(
-            "unknown storage kind `",
-            ::core::stringify!($other),
-            "`: expected `persistent`, `temporary` or `instance`"
-        ))
+        $crate::Persistent
     };
 }

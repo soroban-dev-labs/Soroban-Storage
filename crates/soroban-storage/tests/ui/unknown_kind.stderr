@@ -7,34 +7,3 @@ error: unknown storage kind `forever`: expected `persistent`, `temporary` or `in
   | |_^
   |
   = note: this error originates in the macro `$crate::__storage_kind` which comes from the expansion of the macro `storage_keys` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0277]: the trait bound `(): StorageKind` is not satisfied
- --> tests/ui/unknown_kind.rs:3:1
-  |
-3 | / storage_keys! {
-4 | |     forever(TtlPolicy::new(days(1), days(2))) Counter => u64;
-5 | | }
-  | |_^ the trait `StorageKind` is not implemented for `()`
-  |
-help: the following other types implement trait `StorageKind`
- --> src/kind.rs
-  |
-  |         impl StorageKind for $ty {
-  |         ^^^^^^^^^^^^^^^^^^^^^^^^
-  |         |
-  |         `soroban_storage::Persistent`
-  |         `soroban_storage::Temporary`
-...
-  | keyed_kind!(Persistent, persistent);
-  | ----------------------------------- in this macro invocation
-  | keyed_kind!(Temporary, temporary);
-  | --------------------------------- in this macro invocation
-  |
-  | impl StorageKind for Instance {
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `soroban_storage::Instance`
-note: required by a bound in `soroban_storage::TypedKey::Kind`
- --> src/lib.rs
-  |
-  |     type Kind: StorageKind;
-  |                ^^^^^^^^^^^ required by this bound in `TypedKey::Kind`
-  = note: this error originates in the macro `$crate::__storage_kind` which comes from the expansion of the macro `keyed_kind` (in Nightly builds, run with -Z macro-backtrace for more info)
